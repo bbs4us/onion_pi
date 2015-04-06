@@ -11,5 +11,5 @@ Setup
 Setting up and installing your Onion Pi couldn't be easier. Copy & paste the following
 commands into your terminal and follow the commands provided
 
-    curl -fsSL https://raw.github.com/bbs4us/onion_pi/master/setup.sh | sudo sh
+    curl -fsSL https://raw.github.com/bbs4us/onion_pi/master/setup.sh | sudo bash
 
