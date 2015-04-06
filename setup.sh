@@ -47,7 +47,7 @@ read -p "Press [Enter] key to begin.."
 /bin/echo "Updating package index.."
 /usr/bin/apt-get update -y
 
-/bin/echo "Removing Wolfram Alpha Enginer due to bug. More info:
+/bin/echo "Removing Wolfram Alpha Engine due to bug. More info:
 http://www.raspberrypi.org/phpBB3/viewtopic.php?f=66&t=68263"
 /usr/bin/apt-get remove -y wolfram-engine
 
@@ -55,21 +55,22 @@ http://www.raspberrypi.org/phpBB3/viewtopic.php?f=66&t=68263"
 /usr/bin/apt-get upgrade -y
 
 /bin/echo "Downloading and installing various packages.."
-/usr/bin/apt-get install -y ntp unattended-upgrades monit tor 
+/usr/bin/apt-get install -y ntp unattended-upgrades monit tor wget
+
+/bin/echo "Downloading meek binary for RPi.."
+/usr/bin/wget https://raw.githubusercontent.com/bbs4us/meek-client-pi/master/meek-client
+/bin/chmod meek-client
+mv meek-client /usr/local/bin/meek-client
 
 /bin/echo "Configuring Tor.."
 /bin/cat /dev/null > /etc/tor/torrc
-/etc/tor/torrc <<'onion_pi_configuration'
-## Onion Pi Config v0.3
-## More information: https://github.com/breadtk/onion_pi/
+/bin/echo "## Onion Pi Config v0.3
+## More information: https://github.com/bbs4us/onion_pi/
 
 # Transparent proxy port
 TransPort 9040
 # Explicit SOCKS port for applications.
 SocksPort 9050
-
-# Port that Tor will output 'info' level logs to.
-Log notice file /var/log/tor/notices.log
 
 # Have Tor run in the background
 RunAsDaemon 1
@@ -83,7 +84,32 @@ AutomapHostsOnResolve 1
 
 # Serve DNS responses
 DNSPort 53
-onion_pi_configuration
+
+# meek bridges
+UseBridges 1
+# With tor 0.2.4 or earlier, you have to configure the url and front on the
+# command line, and you can only use one url/front combination at a time:
+Bridge meek 0.0.2.0:1
+# Google is blocked in China
+# ClientTransportPlugin meek exec ./meek-client --url=https://meek-reflect.appspot.com/ --front=www.google.com --log meek-client.log
+ClientTransportPlugin meek exec /usr/local/bin/meek-client --url=https://d2zfqthxsdq309.cloudfront.net/ --front=a0.awsstatic.com --log /var/log/tor/meek-client.log
+
+DataDirectory /var/lib/tor
+PidFile /var/run/tor/tor.pid
+User debian-tor
+
+ControlSocket /var/run/tor/control
+ControlSocketsGroupWritable 1
+
+CookieAuthentication 1
+CookieAuthFileGroupReadable 1
+CookieAuthFile /var/run/tor/control.authcookie
+Log notice file /var/log/tor/log" >> /etc/tor/torrc 
+
+
+/bin/echo "Copying Tor config file.."
+/bin/mkdir -p /usr/share/tor
+/bin/cp /etc/tor/torrc /usr/share/tor/tor-service-defaults-torrc 
 
 /bin/echo "Fixing firewall configuration.."
 /sbin/iptables -F
@@ -101,11 +127,6 @@ onion_pi_configuration
 /usr/bin/shred -fvzu -n 3 /var/log/syslog*
 /usr/bin/shred -fvzu -n 3 /var/log/messages*
 /usr/bin/shred -fvzu -n 3 /var/log/auth.log*
-
-/bin/echo "Setting up logging in /var/log/tor/notices.log.."
-/usr/bin/touch /var/log/tor/notices.log
-/bin/chown debian-tor /var/log/tor/notices.log
-/bin/chmod 644 /var/log/tor/notices.log
 
 /bin/echo "Setting tor to start at boot.."
 /usr/sbin/update-rc.d tor enable
@@ -126,8 +147,8 @@ tor_monit
 /usr/bin/monit quit
 /usr/bin/monit -c /etc/monit/monitrc
 
-/bin/echo "Starting tor.."
-/usr/sbin/service tor start
+/bin/echo "Restarting tor.."
+/usr/sbin/service tor restart
 
 /usr/bin/clear
 /bin/echo "Onion Pi setup complete!
